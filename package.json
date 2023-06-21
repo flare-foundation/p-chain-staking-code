@@ -34,6 +34,8 @@
   },
   "dependencies": {
     "@flarenetwork/flarejs": "^1.0.0",
+    "@google-cloud/kms": "^3.6.0",
+    "@starkware-industries/starkware-crypto-utils": "^0.1.1-dev.1",
     "bech32": "^2.0.0",
     "bech32-converting": "^1.0.9",
     "commander": "^9.4.1",
