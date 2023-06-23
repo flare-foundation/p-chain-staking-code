@@ -7,6 +7,7 @@ import { exportTxCP, importTxPC, exportTxCP_rawSignatures, exportTxCP_unsignedHa
 import { exportTxPC, importTxCP, importTxCP_rawSignatures, importTxCP_unsignedHashes } from './pvmAtomicTx'
 import { addValidator, addValidator_rawSignatures, addValidator_unsignedHashes } from './addValidator'
 import { addDelegator, addDelegator_rawSignatures, addDelegator_unsignedHashes } from './addDelegator'
+import { sign as ledgerSign } from 'flare-ledger-staking/src/sign'
 
 const logger = createLogger('info')
 
@@ -16,8 +17,9 @@ export async function cli(program: Command) {
     .option("--network <network>", "Network name (flare or costwo)", 'flare')
     .option("--env-path <path>", "Path to the .env file", 'env')
     .option("--ctx-file <file>", "Context file as returned by ledger commnunication tool")
-    .option("--get-hashes", "Get hashes of transaction to sign")
-    .option("--use-signatures", "Use hash signatures to finalize the transaction")
+    .option("--get-hashes <get-hashes>", "Get hashes of transaction to sign")
+    .option("--use-signatures <use-signatures>", "Use hash signatures to finalize the transaction")
+    .option("--use-ledger <use-ledger>", "Use ledger to sign the transaction")
   // information about the network
   program
     .command("info").description("Relevant information")
@@ -57,7 +59,9 @@ export async function cli(program: Command) {
         if (options.getHashes) {
           await exportCP_getHashes(ctx, options.transactionId, options.amount, options.fee)
         } else if (options.useSignatures) {
-          await exportCP_useSignatures(ctx, [] /* options.signatures.split(" ") */ , options.transactionId)
+          await exportCP_useSignatures(ctx, options?.signatures?.split(" ") ?? [] , options.transactionId)
+        } else if (options.useLedger) {
+          await exportCP_useLedger(ctx, options.amount, options.fee)
         } else {
           await exportCP(ctx, options.amount, options.fee)
         }
@@ -184,6 +188,18 @@ async function exportCP_useSignatures(ctx: Context, signatures: string[], txid: 
   logger.info(`Success! TXID: ${chainTxId}`)
 }
 
+async function exportCP_useLedger(ctx: Context, amount: string, fee?: string) {
+  const famount: BN = new BN(decimalToInteger(amount, 9))
+  const ffee = (fee === undefined) ? fee : new BN(decimalToInteger(fee, 9))
+  const { usedFee, signatureRequests } = await exportTxCP_unsignedHashes(ctx, "1", famount, ffee)
+  if (fee !== usedFee) logger.info(`Used fee of ${usedFee}`)
+  logger.info(`Sign the transaction on your ledger device`)
+  const DERIVATION_PATH = "m/44'/60'/0'/0/0"
+  await ledgerSign('1.unsignedTx.json', DERIVATION_PATH)
+  logger.info(`Success! Transaction successfully signed`)
+  await exportTxCP_rawSignatures(ctx, [], "1")
+}
+
 async function importCP(ctx: Context) {
   const { txid } = await importTxCP(ctx)
   logger.info(`Success! TXID: ${txid}`)
@@ -200,8 +216,7 @@ async function importCP_useSignatures(ctx: Context, signatures: string[], txid: 
 }
 
 async function exportPC(ctx: Context, amount?: string) {
-  const famount = (amount === undefined) ?
-    amount : new BN(decimalToInteger(amount, 9))
+  const famount = (amount === undefined) ? amount : new BN(decimalToInteger(amount, 9))
   const { txid } = await exportTxPC(ctx, famount)
   logger.info(`Success! TXID: ${txid}`)
 }
