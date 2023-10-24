@@ -157,7 +157,7 @@ export async function interactiveCli(baseargv: string[]) {
     else if (Object.keys(taskConstants)[6] == task.toString()) {
       if (walletProperties.wallet == Object.keys(walletConstants)[0] && fileExists("ctx.json")) {
         const { network: ctxNetwork, derivationPath: ctxDerivationPath, publicKey: ctxPublicKey} = readInfoFromCtx("ctx.json")
-        const ctxPAddress = publicKeyToBech32AddressString(ctxPublicKey, ctxNetwork)
+        const ctxPAddress = "P-" + publicKeyToBech32AddressString(ctxPublicKey, ctxNetwork)
         const ctxCAddress = publicKeyToEthereumAddressString(ctxPublicKey)
         if (ctxNetwork && ctxDerivationPath && ctxPAddress && ctxCAddress) {
 
