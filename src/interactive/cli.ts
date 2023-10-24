@@ -12,7 +12,7 @@ import { contextEnv, contextFile, getContext } from "../context"
 import { prompts } from "./prompts"
 import { claimRewards, isAddressRegistered, isUnclaimedReward, registerAddress, optOutOfAirdrop } from "../contracts"
 import { getPathsAndAddresses } from '../ledger/utils'
-import { compressPublicKey, waitFinalize } from "../utils"
+import { compressPublicKey, publicKeyToBech32AddressString, publicKeyToEthereumAddressString, waitFinalize } from "../utils"
 import { cli, initCtxJsonFromOptions } from '../cli'
 import { logInfo } from '../output'
 
@@ -156,8 +156,9 @@ export async function interactiveCli(baseargv: string[]) {
     // Adding a validator
     else if (Object.keys(taskConstants)[6] == task.toString()) {
       if (walletProperties.wallet == Object.keys(walletConstants)[0] && fileExists("ctx.json")) {
-        const { network: ctxNetwork, derivationPath: ctxDerivationPath, ethAddress: ctxCAddress,
-          publicKey: ctxPublicKey, flareAddress: ctxPAddress } = readInfoFromCtx("ctx.json")
+        const { network: ctxNetwork, derivationPath: ctxDerivationPath, publicKey: ctxPublicKey} = readInfoFromCtx("ctx.json")
+        const ctxPAddress = publicKeyToBech32AddressString(ctxPublicKey, ctxNetwork)
+        const ctxCAddress = publicKeyToEthereumAddressString(ctxPublicKey)
         if (ctxNetwork && ctxDerivationPath && ctxPAddress && ctxCAddress) {
 
           await checkAddressRegistrationLedger(walletProperties.wallet, ctxNetwork, ctxDerivationPath, ctxCAddress, ctxPublicKey, ctxPAddress)
@@ -564,8 +565,8 @@ function readInfoFromCtx(filePath: string): ContextFile {
   const wallet = ctxData.wallet
   const publicKey = ctxData.publicKey
   const network = ctxData.network
-  const ethAddress = ctxData.ethAddress || undefined
-  const flareAddress = ctxData.flareAddress
+  const ethAddress = publicKeyToEthereumAddressString(publicKey)
+  const flareAddress = "P-" + publicKeyToBech32AddressString(publicKey, network)
   const derivationPath = ctxData.derivationPath || undefined
   const vaultId = ctxData.vaultId || undefined
 
@@ -776,60 +777,6 @@ async function claimRewardsForDefi(wallet: string, transactionId: string) {
   };
   await claimRewards(claimRewardsParams)
 
-}
-
-// fetches the base fees for C-Chain
-async function getBaseFeesForCChain() {
-  const ctx: Context = contextFile("ctx.json")
-  const baseFeeResponse: string = await ctx.cchain.getBaseFee()
-  const baseFee = new BN(parseInt(baseFeeResponse, 16) / 1e9)
-  return baseFee
-}
-
-// fetches the base fees for C-Chain via private key
-async function getBaseFeesForCChainViaPrivateKey(path: string, network: string) {
-  const ctx = contextEnv(path, network);
-  const baseFeeResponse: string = await ctx.cchain.getBaseFee()
-  const baseFee = new BN(parseInt(baseFeeResponse, 16) / 1e9)
-  return baseFee
-}
-
-// fetches the base fees for P-Chain
-async function getBaseFeesForPChain() {
-  const ctx: Context = contextFile("ctx.json")
-  const defaultFee = await ctx.pchain.getDefaultTxFee()
-  return defaultFee
-}
-
-// fetches the base fees for P-Chain via private key
-async function getBaseFeesForPChainViaPrivateKey(path: string, network: string) {
-  const ctx = contextEnv(path, network);
-  const defaultFee = await ctx.pchain.getDefaultTxFee()
-  return defaultFee
-}
-/**
-* @description - fetches the default fees based on the P or C
-* @param chain - P for P-chain and C for C-chain
-* @returns BN
-*/
-async function getFeesBasedOnChain(chain: string) {
-  let fees;
-  if (chain == 'P') {
-    fees = await getBaseFeesForPChain()
-  } else {
-    fees = await getBaseFeesForCChain()
-  }
-  return fees;
-}
-
-async function getFeesBasedOnChainForPrivateKey(chain: string, path: string, network: string) {
-  let fees;
-  if (chain == 'P') {
-    fees = await getBaseFeesForPChainViaPrivateKey(path, network)
-  } else {
-    fees = await getBaseFeesForCChainViaPrivateKey(path, network)
-  }
-  return fees;
 }
 
 /**
