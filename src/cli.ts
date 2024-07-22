@@ -39,7 +39,9 @@ const networkTokenSymbol: { [index: string]: string } = {
   "flare": "FLR",
   "songbird": "SGB",
   "costwo": "C2FLR",
+  "costwo-staging": "C2FLR",
   "coston": "CFLR",
+  "coston-staging": "CFLR",
   "localflare": "PHT"
 }
 
@@ -52,6 +54,7 @@ export async function cli(program: Command) {
     .option("--derivation-path <derivation-path>", "Ledger address derivation path", BASE_DERIVATION_PATH)
     .option("--ctx-file <file>", "Context file as returned by init-ctx", 'ctx.json')
     .option("--env-path <path>", "Path to the .env file")
+    .option("--network-url <url>", "URL of the network to connect to (overrides default)")
     .option("--get-hacked", "Use the .env file with the exposed private key")
   // interactive mode
   program
@@ -371,14 +374,14 @@ export async function initCtxJsonFromOptions(options: OptionValues, derivationPa
   if (options.ledger) {
     const { publicKey, address } = await ledgerGetAccount(derivationPath, options.network)
     const ethAddress = publicKeyToEthereumAddressString(publicKey)
-    ctxFile = { wallet: "ledger", publicKey, ethAddress, flareAddress: address, network: options.network, derivationPath }
+    ctxFile = { wallet: "ledger", publicKey, ethAddress, flareAddress: address, network: options.network, derivationPath, networkUrl: options.networkUrl }
   } else if (options.publicKey) {
     if (!validatePublicKey(options.publicKey)) return logError('Invalid public key')
-    ctxFile = { wallet: "publicKey", publicKey: options.publicKey, network: options.network }
+    ctxFile = { wallet: "publicKey", publicKey: options.publicKey, network: options.network, networkUrl: options.networkUrl }
     if (options.vaultId) {
       ctxFile = {
         ...ctxFile,
-        vaultId: options.vaultId
+        vaultId: options.vaultId,
       }
     }
   } else {

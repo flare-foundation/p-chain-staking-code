@@ -11,6 +11,19 @@ import {
   privateKeyToPublicKey, decodePublicKey
 } from './utils'
 
+const networkCostwoStaging: NetworkConfig = {
+  protocol: '',
+  ip: '',
+  networkID: 114,
+  hrp: 'costwo'
+}
+
+const networkCostonStaging: NetworkConfig = {
+  protocol: '',
+  ip: '',
+  networkID: 7,
+  hrp: 'coston'
+}
 
 /**
  * @param network
@@ -19,6 +32,10 @@ import {
 export function rpcUrlFromNetworkConfig(network: string): string {
   const config: NetworkConfig = getNetworkConfig(network)
   return `${config.protocol}://${config.ip}/ext/bc/C/rpc`
+}
+
+export function hrpFromNetworkConfig(network: string): string {
+  return getNetworkConfig(network).hrp
 }
 
 /**
@@ -43,7 +60,8 @@ export function contextEnv(path: string, network: string): Context {
     network,
     process.env.PUBLIC_KEY,
     process.env.PRIVATE_KEY_HEX,
-    process.env.PRIVATE_KEY_CB58)
+    process.env.PRIVATE_KEY_CB58
+  )
 }
 
 /**
@@ -53,7 +71,7 @@ export function contextEnv(path: string, network: string): Context {
  */
 export function contextFile(ctxFile: string): Context {
   const ctx = readContextFile(ctxFile)
-  return getContext(ctx.network, ctx.publicKey)
+  return getContext(ctx.network, ctx.publicKey, undefined, undefined, ctx.networkUrl)
 }
 
 /**
@@ -72,10 +90,11 @@ export function networkFromContextFile(ctxFile: string): string {
  * @param publicKey - public key
  * @param privateKeyHex - private key in hex format
  * @param privateKeyCB58 - private key in cb58 format
+ * @param networkIP - network IP
  * @returns context
  */
-export function getContext(network: string, publicKey?: string, privateKeyHex?: string, privateKeyCB58?: string): Context {
-  return context(getNetworkConfig(network), publicKey, privateKeyHex, privateKeyCB58)
+export function getContext(network: string, publicKey?: string, privateKeyHex?: string, privateKeyCB58?: string, networkURL?: string): Context {
+  return context(getNetworkConfig(network), publicKey, privateKeyHex, privateKeyCB58, networkURL)
 }
 
 /**
@@ -91,8 +110,12 @@ export function getNetworkConfig(network: string | undefined): NetworkConfig {
     networkConfig = songbird
   } else if (network == 'costwo') {
     networkConfig = costwo
+  } else if (network == 'costwo-staging') {
+    networkConfig = networkCostwoStaging
   } else if (network == 'coston') {
     networkConfig = coston
+  } else if (network == 'coston-staging') {
+    networkConfig = networkCostonStaging
   } else if (network == 'localflare') {
     networkConfig = localflare
   } else if (network == 'local') {
@@ -111,9 +134,17 @@ export function getNetworkConfig(network: string | undefined): NetworkConfig {
  */
 export function context(
   config: NetworkConfig,
-  publicKey?: string, privkHex?: string, privkCB58?: string,
+  publicKey?: string, privkHex?: string, privkCB58?: string, networkURL?: string
 ): Context {
   const { protocol, ip, port, networkID } = config
+  // if (networkURL) {
+  //   // split into ip, port, protocol
+  //   const url = new URL(networkURL)
+  //   ip = url.hostname
+  //   port = url.port ? Number(url.port) : undefined
+  //   protocol = url.protocol.slice(0, -1) // remove the colon
+  // }
+
   // those two addresses should be derived for most cli applications
   let cAddressHex: string | undefined
   let addressBech32: string | undefined
@@ -207,4 +238,27 @@ export function context(
     avaxAssetID: avaxAssetID,
     config: config
   }
+}
+
+export function updateNetworkUrl(network: string, networkUrl: string): void {
+  if (!networkUrl)
+    return;
+
+  let networkCfg: NetworkConfig
+
+  switch (network) {
+    case 'costwo-staging':
+      networkCfg = networkCostwoStaging
+      break
+    case 'coston-staging':
+      networkCfg = networkCostonStaging
+      break
+    default:
+      throw Error('Invalid network - only costwo-staging and coston-staging are allowed with custom network url')
+  }
+
+  const url = new URL(networkUrl)
+
+  networkCfg.ip = url.hostname + (url.port ? `:${url.port}` : '')
+  networkCfg.protocol = url.protocol.slice(0, -1) // remove the colon
 }

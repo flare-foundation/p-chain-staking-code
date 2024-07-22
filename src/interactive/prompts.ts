@@ -142,6 +142,15 @@ export const prompts = {
     return inquirer.prompt(questions);
   },
 
+  selectNetworkUrl: async () => {
+    const questions = [{
+      type: 'input',
+      name: 'networkUrl',
+      message: chalk.magenta("Enter network url:"),
+    }];
+    return inquirer.prompt(questions);
+  },
+
   selectTask: async () => {
     const questions = [{
       type: 'list',

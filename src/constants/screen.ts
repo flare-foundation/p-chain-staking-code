@@ -29,7 +29,9 @@ export const networkConstants: ScreenConstantsInterface = {
   "flare": "Flare " + chalk.green("(mainnet)"),
   "songbird": "Songbird " + chalk.green("(canary)"),
   "costwo": "Coston2 " + chalk.yellow("(testnet)"),
-  "coston": "Coston" + chalk.yellow("(testnet)"),
+  "costwo-staging": "Coston2 " + chalk.yellow("(testnet - staging)"),
+  "coston": "Coston " + chalk.yellow("(testnet)"),
+  "coston-staging": "Coston " + chalk.yellow("(testnet - staging)"),
   "localflare": "LocalHost " + chalk.red("(devnet)"),
 }
 

@@ -34,6 +34,7 @@ export interface ContextFile {
   ethAddress?: string
   vaultId?: string
   derivationPath?: string
+  networkUrl?: string
 }
 
 export interface UnsignedTxJson {

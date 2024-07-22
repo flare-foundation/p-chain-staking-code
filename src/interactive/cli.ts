@@ -8,7 +8,7 @@ import {
   RegisterAddressInterface, ScreenConstantsInterface, OptOutOfAirdropInterface
 } from '../interfaces'
 import { taskConstants, walletConstants } from "../constants/screen"
-import { contextEnv, contextFile, getContext } from "../context"
+import { contextEnv, contextFile, getContext, hrpFromNetworkConfig, updateNetworkUrl } from "../context"
 import { prompts } from "./prompts"
 import { claimRewards, isAddressRegistered, isUnclaimedReward, registerAddress, optOutOfAirdrop } from "../contracts"
 import { getPathsAndAddresses } from '../ledger/utils'
@@ -156,7 +156,7 @@ export async function interactiveCli(baseargv: string[]) {
     // Adding a validator
     else if (Object.keys(taskConstants)[6] == task.toString()) {
       if (walletProperties.wallet == Object.keys(walletConstants)[0] && fileExists("ctx.json")) {
-        const { network: ctxNetwork, derivationPath: ctxDerivationPath, publicKey: ctxPublicKey} = readInfoFromCtx("ctx.json")
+        const { network: ctxNetwork, derivationPath: ctxDerivationPath, publicKey: ctxPublicKey } = readInfoFromCtx("ctx.json")
         const ctxPAddress = "P-" + publicKeyToBech32AddressString(ctxPublicKey, ctxNetwork)
         const ctxCAddress = publicKeyToEthereumAddressString(ctxPublicKey)
         if (ctxNetwork && ctxDerivationPath && ctxPAddress && ctxCAddress) {
@@ -173,7 +173,7 @@ export async function interactiveCli(baseargv: string[]) {
         }
       }
       else if (walletProperties.wallet == Object.keys(walletConstants)[1] && fileExists("ctx.json")) {
-        const { network: ctxNetwork, vaultId: ctxVaultId, publicKey: ctxPublicKey } = readInfoFromCtx("ctx.json")
+        const { network: ctxNetwork, vaultId: ctxVaultId, publicKey: ctxPublicKey, networkUrl } = readInfoFromCtx("ctx.json")
         if (ctxNetwork && ctxVaultId && ctxPublicKey) {
           const isContinue = await prompts.forDefiContinue()
           if (!isContinue.isContinue) {
@@ -186,6 +186,9 @@ export async function interactiveCli(baseargv: string[]) {
               txnId = txnId.id
               const { amount, nodeId, startTime, endTime, delegationFee } = await getDetailsForDelegation(taskConstants[task])
               const argsValidator = [...baseargv.slice(0, 2), "transaction", taskConstants[task], '-n', `${nodeId}`, `--network=${walletProperties.network}`, '-a', `${amount}`, '-s', `${startTime}`, '-e', `${endTime}`, '--delegation-fee', `${delegationFee}`, "-i", `${txnId}`]
+              if (networkUrl) {
+                argsValidator.push("--network-url", networkUrl)
+              }
               await program.parseAsync(argsValidator)
             }
             else {
@@ -502,9 +505,11 @@ async function connectWallet(): Promise<ConnectWalletInterface> {
     if (isCreateCtx) {
       const publicKey = await prompts.publicKey()
       const network = await selectNetwork()
+      const networkUrl = await selectNetworkUrl(network)
       const vaultId = await prompts.vaultId()
       const optionsObject = {
         network,
+        networkUrl,
         blind: false,
         ctxFile: 'ctx.json',
         publicKey: publicKey.publicKey,
@@ -520,10 +525,12 @@ async function connectWallet(): Promise<ConnectWalletInterface> {
     let network
     if (isCreateCtx) {
       network = await selectNetwork()
+      const networkUrl = await selectNetworkUrl(network)
       const selectedDerivationPath = await selectDerivationPath(network)
 
       const optionsObject = {
         network,
+        networkUrl,
         blind: false,
         ctxFile: 'ctx.json',
         ledger: true
@@ -542,6 +549,15 @@ async function selectNetwork() {
   const network = await prompts.selectNetwork()
   return network.network
 }
+
+async function selectNetworkUrl(network: string): Promise<string> {
+  if (network == "costwo-staging" || network == "coston-staging") {
+    const networkUrl = await prompts.selectNetworkUrl()
+    return networkUrl.networkUrl
+  }
+  return '';
+}
+
 
 async function selectTask(): Promise<keyof ScreenConstantsInterface> {
   const task = await prompts.selectTask()
@@ -566,12 +582,13 @@ function readInfoFromCtx(filePath: string): ContextFile {
   const publicKey = ctxData.publicKey
   const network = ctxData.network
   const ethAddress = publicKeyToEthereumAddressString(publicKey)
-  const flareAddress = "P-" + publicKeyToBech32AddressString(publicKey, network)
+  const flareAddress = "P-" + publicKeyToBech32AddressString(publicKey, hrpFromNetworkConfig(network))
   const derivationPath = ctxData.derivationPath || undefined
   const vaultId = ctxData.vaultId || undefined
+  const networkUrl = ctxData.networkUrl || undefined
 
-  return { wallet, publicKey, network, ethAddress, flareAddress, derivationPath, vaultId }
-
+  updateNetworkUrl(network, networkUrl)
+  return { wallet, publicKey, network, ethAddress, flareAddress, derivationPath, vaultId, networkUrl }
 }
 
 async function createChoicesFromAddress(pathList: DerivedAddress[]) {
@@ -590,7 +607,8 @@ async function getCtxStatus(wallet: string): Promise<boolean> {
   const isFileExist: boolean = fileExists("ctx.json");
 
   if (isFileExist) {
-    const { wallet: ctxWallet, network: ctxNetwork, publicKey: ctxPublicKey, ethAddress: ctxEthAddress, vaultId: ctxVaultId } = readInfoFromCtx("ctx.json")
+    const { wallet: ctxWallet, network: ctxNetwork, publicKey: ctxPublicKey, ethAddress: ctxEthAddress, vaultId: ctxVaultId,
+      networkUrl: ctxNetworkUrl } = readInfoFromCtx("ctx.json")
     if (wallet !== ctxWallet) {
       deleteFile()
       return isCreateCtx
@@ -598,6 +616,9 @@ async function getCtxStatus(wallet: string): Promise<boolean> {
     console.log(chalk.magenta("You already have an existing Ctx file with the following parameters - "))
     console.log(chalk.hex('#FFA500')("Public Key:"), ctxPublicKey)
     console.log(chalk.hex('#FFA500')("Network:"), ctxNetwork)
+    if (ctxNetwork === "costwo-staging" || ctxNetwork === "coston-staging") {
+      console.log(chalk.hex('#FFA500')("Network url:"), ctxNetworkUrl)
+    }
     if (ctxEthAddress) {
       console.log(chalk.hex('#FFA500')("Eth Address:"), ctxEthAddress)
     }

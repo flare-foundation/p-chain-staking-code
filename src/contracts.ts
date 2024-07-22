@@ -13,7 +13,7 @@ import {
 } from "./constants/contracts";
 import { walletConstants } from "./constants/screen";
 import { prefix0x, saveUnsignedTxJson, integerToDecimal } from "./utils";
-import { getNetworkConfig, rpcUrlFromNetworkConfig } from "./context"
+import { getNetworkConfig, hrpFromNetworkConfig, rpcUrlFromNetworkConfig } from "./context"
 import { ledgerSign } from "./ledger/sign";
 
 type DelegatedAmount = {
@@ -206,14 +206,15 @@ async function getContractAddress(network: string, contractName: string): Promis
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
   const abi = getFlareContractRegistryABI() as ethers.ContractInterface
-  if (network != "flare" && network != "costwo") throw new Error("Invalid network passed")
-  const contract = new ethers.Contract(defaultContractAddresses.FlareContractRegistry[network], abi, provider);
+  const hrp = hrpFromNetworkConfig(network)
+  if (hrp != "flare" && hrp != "costwo") throw new Error("Invalid network passed")
+  const contract = new ethers.Contract(defaultContractAddresses.FlareContractRegistry[hrp], abi, provider);
 
   const result = await contract.getContractAddressByName(contractName);
 
   if (result !== '0x0000000000000000000000000000000000000000') return result
 
-  const defaultAddress = defaultContractAddresses[contractName]?.[network]
+  const defaultAddress = defaultContractAddresses[contractName]?.[hrp]
   if (defaultAddress) return defaultAddress
 
   throw new Error("Contract Address not found")

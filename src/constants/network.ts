@@ -23,13 +23,6 @@ export const local: NetworkConfig = {
   hrp: 'local'
 }
 
-export const costworocks: NetworkConfig = {
-  protocol: 'https',
-  ip: 'coston2-api.flare.rocks',
-  networkID: 114,
-  hrp: 'costwo'
-}
-
 export const coston: NetworkConfig = {
   protocol: 'https',
   ip: 'coston.flare.rocks',
@@ -39,7 +32,7 @@ export const coston: NetworkConfig = {
 
 export const costwo: NetworkConfig = {
   protocol: 'https',
-  ip: 'coston2-api.flare.network',
+  ip: 'coston2-api.flare.networkkkkk',
   networkID: 114,
   hrp: 'costwo'
 }
